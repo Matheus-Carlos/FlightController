@@ -172,7 +172,7 @@ void loop()
     pwm[i] = sat(pwm[i], 1100, 2000);
   }
 
-  if (mot_activated==2)
+  if (mot_activated==1)
   {
     for (int i = 0; i < 4; i++) {
       motors[i].writeMicroseconds(pwm[i]);
@@ -186,12 +186,8 @@ void loop()
   }
 
   // Arming
-  if ((inputs[THROTTLE] < 1100) && (inputs[YAW] > 1800))
-    mot_activated = 1;
-  else if (mot_activated == 1 && inputs[THROTTLE] < 1100 && inputs[YAW] < 1500) 
-    mot_activated = 2;
-  else if(mot_activated == 2 && inputs[THROTTLE] < 1100 && inputs[YAW] < 1100) 
-    mot_activated = 0;
+  if (inputs[ARM] > 1800) mot_activated = 1;
+  else if (inputs[ARM] < 1400) mot_activated = 0;
 
   //printMesument();
   print_PID_out();
