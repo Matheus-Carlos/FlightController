@@ -18,18 +18,22 @@ void setColor(int r, int g, int b){
 
 }
 
-void RGB::red(){
-
-}
+void RGB::red(){ setColor(255,0,0); }
   
-void RGB::green(){
+void RGB::green(){ setColor(0,255,0) }
 
-}
-
-void RGB::blue(){
-
-}
+void RGB::blue(){ setColor(0,0,255); }
  
-void RGB::yellow(){
+void RGB::yellow(){ setColor(255,255,0); }
+
+void RGB::starting(){
+
+}
+
+void calibrating(){
+
+}
+
+void flying(){
 
 }
