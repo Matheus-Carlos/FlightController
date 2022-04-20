@@ -1,1 +1,1 @@
-Project of a flight controller using an arduino mega
+# Project of a flight controller using an arduino mega.
