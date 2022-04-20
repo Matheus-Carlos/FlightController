@@ -1,6 +1,8 @@
 #include "RGB.h"
 #include <Arduino.h>
 
+int pinR, pinG, pinB;
+
 RGB::RGB(int R, int G, int B){
     pinR = R;
     pinG = G;
@@ -20,7 +22,7 @@ void setColor(int r, int g, int b){
 
 void RGB::red(){ setColor(255,0,0); }
   
-void RGB::green(){ setColor(0,255,0) }
+void RGB::green(){ setColor(0,255,0); }
 
 void RGB::blue(){ setColor(0,0,255); }
  

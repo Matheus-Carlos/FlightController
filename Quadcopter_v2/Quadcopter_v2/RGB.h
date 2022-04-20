@@ -6,11 +6,11 @@
 
 class RGB{
     private:
-        red();
-        green();
-        blue();
-        yellow();
-        int pinR, pinG, pinB;
+        void red();
+        void green();
+        void blue();
+        void yellow();
+        
 
     public:
         RGB(int R, int G, int B);

@@ -186,15 +186,15 @@ void loop()
   }
 
   // Arming
-  if (inputs[ARM] > 1800) mot_activated = 1;
-  else if (inputs[ARM] < 1400) mot_activated = 0;
+  if (inputs[ARM] > 1800 && inputs[THROTTLE] < 1100) mot_activated = 1;
+  else if (inputs[ARM] < 1400 && inputs[THROTTLE] < 1100) mot_activated = 0;
 
   //printMesument();
-  print_PID_out();
+  //print_PID_out();
   //print_PWM();
   //print_RadioValues();
-//  Serial.print("Motor_activate:");
-//  Serial.print(mot_activated);
+  Serial.print("Motor_activate:");
+  Serial.print(mot_activated);
   Serial.println();
 }
 
