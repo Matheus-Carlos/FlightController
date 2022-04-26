@@ -65,8 +65,8 @@ channel_data channels[6];
 int inputs[6] = {0, 0, 0, 0, 0, 0};
 
 PIDController controllers[3] = {
-  PIDController(10, 0.01, 1.5),
-  PIDController(10., 0.01, 1.5),
+  PIDController(10, 0.01, 0.3),
+  PIDController(10, 0.01, 0.3),
   PIDController(4.5, 0.1, 0.2)
 };
 
@@ -84,6 +84,20 @@ void printMesument() {
   Serial.print(" ");
   Serial.print("Yaw:");
   Serial.print(rot[2]);
+  Serial.print(" ");
+}
+
+
+
+void printReference() {
+  Serial.print("ref_phi:");
+  Serial.print(rotd[0]);
+  Serial.print(" ");
+  Serial.print("ref_theta:");
+  Serial.print(rotd[1]);
+  Serial.print(" ");
+  Serial.print("ref_psi:");
+  Serial.print(rotd[2]);
   Serial.print(" ");
 }
 
@@ -154,9 +168,13 @@ void setup()
   /*in order to make sure that the ESCs won't enter into config mode
    *I send a 1000us pulse to each ESC.*/
   for(int i =0; i<4 ; i++){
-    motors[i].writeMicroseconds(1000);
+    motors[i].writeMicroseconds(1400);
   }
-  delay(3000);
+  delay(2000);
+//  for(int i =0; i<4 ; i++){
+//    motors[i].writeMicroseconds(1000);
+//  }
+//  delay(5000);
 }
 
 void loop()
@@ -175,10 +193,15 @@ void loop()
   time = millis(); // actual time read
   elapsedTime = (time - timePrev) / 1000;
 
-  imu.BMI_160_update_RPY(roll, pitch, yaw);
+  //imu.BMI_160_update_RPY(roll, pitch, yaw);
+  long accx, accy, accz;
+  imu.getRaw_acc(accx, accy, accz);
+  roll = mapfloat((float)accx, -20000, 20000, -90, 90);
+  pitch = mapfloat((float)accy, -20000, 20000, -90, 90);
+  yaw = mapfloat((float)accz, -20000, 20000, -90, 90);
 
-  controllers[current_tuning_controller].Kp = mapfloat((float)inputs[FLY_MODE], 1000, 2000, 0, 15);
-  controllers[current_tuning_controller].Kd = mapfloat((float)inputs[ARM], 1000, 2000, 0, 10);
+  controllers[0].Kp = mapfloat((float)inputs[FLY_MODE], 1000, 2000, 0, 15);
+  controllers[1].Kp = mapfloat((float)inputs[ARM], 1000, 2000, 0, 10);
 
   //////////////////////////////////////Total angle/////////////////////////////////////
   /*---X axis angle(Pitch)---*/
@@ -200,14 +223,14 @@ void loop()
   }
 
   /*Finnaly we calculate the PWM width. We sum the desired throttle and the PID value*/
-//  pwm[0] = 115 + inputs[THROTTLE] - U[U_THETA] - U[U_PHI] - U[U_PSI];
-//  pwm[1] = 115 + inputs[THROTTLE] - U[U_THETA] + U[U_PHI] + U[U_PSI];
-//  pwm[2] = 115 + inputs[THROTTLE] + U[U_THETA] + U[U_PHI] - U[U_PSI];
-//  pwm[3] = 115 + inputs[THROTTLE] + U[U_THETA] - U[U_PHI] + U[U_PSI];
-  pwm[1] = 115 + inputs[THROTTLE]  - U[U_PSI];
-  pwm[0] = 115 + inputs[THROTTLE]  + U[U_PSI];
-  pwm[2] = 115 + inputs[THROTTLE]  - U[U_PSI];
-  pwm[3] = 115 + inputs[THROTTLE]  + U[U_PSI];
+  pwm[0] = 115 + inputs[THROTTLE] - U[U_THETA] + U[U_PHI] + U[U_PSI];
+  pwm[1] = 115 + inputs[THROTTLE] - U[U_THETA] - U[U_PHI] - U[U_PSI];
+  pwm[2] = 115 + inputs[THROTTLE] + U[U_THETA] + U[U_PHI] - U[U_PSI];
+  pwm[3] = 115 + inputs[THROTTLE] + U[U_THETA] - U[U_PHI] + U[U_PSI];
+//  pwm[1] = 115 + inputs[THROTTLE]  - U[U_PSI];
+//  pwm[0] = 115 + inputs[THROTTLE]  + U[U_PSI];
+//  pwm[2] = 115 + inputs[THROTTLE]  - U[U_PSI];
+//  pwm[3] = 115 + inputs[THROTTLE]  + U[U_PSI];
 
   /*Once again we map the PWM values to be sure that we won't pass the min
   and max values. Yes, we've already maped the PID values. But for example, for
@@ -235,13 +258,14 @@ void loop()
   //if (inputs[ARM] > 1800 && inputs[THROTTLE] < 1100) mot_activated = 1;
   //else if (inputs[ARM] < 1400 && inputs[THROTTLE] < 1100) mot_activated = 0;
 
-  //printMesument();
+  printMesument();
+  //printReference();
   //print_PID_out();
   //print_PWM();
   //print_RadioValues();
 //  Serial.print("Motor_activate:");
 //  Serial.print(mot_activated);
-//  Serial.println();
+  Serial.println();
 }
 
 

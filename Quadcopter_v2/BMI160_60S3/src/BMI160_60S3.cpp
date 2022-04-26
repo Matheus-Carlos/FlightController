@@ -12,9 +12,15 @@ int angle_pitch_buffer, angle_roll_buffer;
 boolean set_gyro_angles;
 float angle_roll_acc, angle_pitch_acc;
 float angle_pitch_output, angle_roll_output;
+float pitch_cal, roll_cal;
 
 BMI160_60S3::BMI160_60S3(){
 
+}
+
+void BMI160_60S3::calibrate_initial(float roll, float pitch){
+    roll_cal = roll;
+    pitch_cal = pitch;
 }
 
 void BMI160_60S3::begin(int speed, bool serial){
@@ -92,8 +98,8 @@ void BMI160_60S3::BMI_160_update_RPY(float& roll, float& pitch, float& yaw){
 
     
     //Place the MPU-6050 spirit level and note the values in the following two lines for calibration
-    angle_pitch_acc -= 0.0;                                              //Accelerometer calibration value for pitch
-    angle_roll_acc -= 0.0;                                               //Accelerometer calibration value for roll
+    angle_pitch_acc -= pitch_cal;                                              //Accelerometer calibration value for pitch
+    angle_roll_acc -= roll_cal;                                               //Accelerometer calibration value for roll
 
     if(set_gyro_angles){                                                 //If the IMU is already started
         angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;     //Correct the drift of the gyro pitch angle with the accelerometer pitch angle

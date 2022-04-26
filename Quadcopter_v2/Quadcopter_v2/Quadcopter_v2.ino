@@ -18,9 +18,12 @@ enum U_ {
 /*------------------*/
 // Motors
 
+enum {F_L_PROP=36, F_R_PROP=34, B_L_PROP=35, B_L_PROP=37};
+
 Servo motors[4];
 float pwm[4];
 int motor_pins[4] = {36, 35, 34, 37};
+
 
 // sensor
 
@@ -60,10 +63,10 @@ double rotd[3]; // [phid, thetad, psid] desired
 
 void printMesument() {
   Serial.print("Roll:");
-  Serial.print(rot[0]);
+  Serial.print(rot[1]);
   Serial.print(" ");
   Serial.print("Pitch:");
-  Serial.print(rot[1]);
+  Serial.print(rot[0]);
   Serial.print(" ");
   Serial.print("Yaw:");
   Serial.print(rot[2]);
@@ -105,8 +108,8 @@ void print_RadioValues(){
 
 void setup()
 {
-
   imu.begin(9600, true);
+  imu.calibrate_initial(-0.5, -3);
 
   PCICR |= (1 << PCIE0);   // enable PCMSK0 scan - PORT B OF THE ARDUINO MEGA
   PCMSK0 |= (1 << PCINT0); // Set pin D53 trigger an interrupt on state change - CHANNEL 1.
@@ -158,10 +161,10 @@ void loop()
   }
 
   /*Finnaly we calculate the PWM width. We sum the desired throttle and the PID value*/
-  pwm[0] = 115 + inputs[THROTTLE] - U[U_THETA] - U[U_PHI] - U[U_PSI];
-  pwm[1] = 115 + inputs[THROTTLE] - U[U_THETA] + U[U_PHI] + U[U_PSI];
-  pwm[2] = 115 + inputs[THROTTLE] + U[U_THETA] + U[U_PHI] - U[U_PSI];
-  pwm[3] = 115 + inputs[THROTTLE] + U[U_THETA] - U[U_PHI] + U[U_PSI];
+  pwm[F_L_PROP] = 115 + inputs[THROTTLE] + U[U_THETA] - U[U_PHI] - U[U_PSI];
+  pwm[B_L_PROP] = 115 + inputs[THROTTLE] - U[U_THETA] + U[U_PHI] + U[U_PSI];
+  pwm[B_R_PROP] = 115 + inputs[THROTTLE] - U[U_THETA] - U[U_PHI] - U[U_PSI];
+  pwm[F_R_PROP] = 115 + inputs[THROTTLE] + U[U_THETA] + U[U_PHI] + U[U_PSI];
 
   /*Once again we map the PWM values to be sure that we won't pass the min
   and max values. Yes, we've already maped the PID values. But for example, for
@@ -189,12 +192,12 @@ void loop()
   if (inputs[ARM] > 1800 && inputs[THROTTLE] < 1100) mot_activated = 1;
   else if (inputs[ARM] < 1400 && inputs[THROTTLE] < 1100) mot_activated = 0;
 
-  //printMesument();
+  printMesument();
   //print_PID_out();
   //print_PWM();
   //print_RadioValues();
-  Serial.print("Motor_activate:");
-  Serial.print(mot_activated);
+//  Serial.print("Motor_activate:");
+//  Serial.print(mot_activated);
   Serial.println();
 }
 
