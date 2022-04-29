@@ -4,8 +4,41 @@
 #include "utils.h"
 #include "PIDController.h"
 #include <EEPROM.h>
-
+#include "average.h"
 #define BitTst
+
+//average media_roll(50);
+//average media_pitch(50);
+
+// ===============================================================================
+// --- Média móvel ---
+#define      n     10        //número de pontos da média móvel 
+// ===============================================================================
+// --- Protótipo da Função ---
+float moving_average1();       //Função para filtro de média móvel
+float moving_average2();       //Função para filtro de média móvel
+// ===============================================================================
+// --- Variáveis Globais ---
+float mesurement_average1, mesurement_average2;          //recebe o valor original filtrado
+float numbers1[n], numbers2[n];        //vetor com os valores para média móvel
+float moving_average1(float mesurement){
+   //desloca os elementos do vetor de média móvel
+   for(int i= n-1; i>0; i--) numbers1[i] = numbers1[i-1];
+   numbers1[0] = mesurement; //posição inicial do vetor recebe a leitura original
+   float acc = 0;          //acumulador para somar os pontos da média móvel
+   for(int i=0; i<n; i++) acc += numbers1[i]; //faz a somatória do número de pontos
+   return acc/n;  //retorna a média móvel 
+} //end moving_average
+float moving_average2(float mesurement){
+   //desloca os elementos do vetor de média móvel
+   for(int i= n-1; i>0; i--) numbers2[i] = numbers2[i-1];
+   numbers2[0] = mesurement; //posição inicial do vetor recebe a leitura original
+   float acc = 0;          //acumulador para somar os pontos da média móvel
+   for(int i=0; i<n; i++) acc += numbers2[i]; //faz a somatória do número de pontos
+   return acc/n;  //retorna a média móvel 
+} //end moving_average
+
+
 
 void EEPROM_writeDouble(int ee, float value)
 {
@@ -13,6 +46,7 @@ void EEPROM_writeDouble(int ee, float value)
     for (int i = 0; i < sizeof(value); i++)
         EEPROM.write(ee++, *p++);
 }
+
 
 float EEPROM_readDouble(int ee)
 {
@@ -37,7 +71,7 @@ enum U_ {
 
 Servo motors[4];
 float pwm[4];
-int motor_pins[4] = {36, 35, 34, 37};
+int motor_pins[4] = {36, 34, 35, 37};
 
 // sensor
 
@@ -65,9 +99,9 @@ channel_data channels[6];
 int inputs[6] = {0, 0, 0, 0, 0, 0};
 
 PIDController controllers[3] = {
-  PIDController(10, 0.01, 0.3),
-  PIDController(10, 0.01, 0.3),
-  PIDController(4.5, 0.1, 0.2)
+  PIDController(0, 0.0, 0.05),
+  PIDController(0, 0.0, 0.05),
+  PIDController(27.5, 0.1, 3.8)
 };
 
 double U[4] = { 0, 0, 0, 0 };
@@ -77,10 +111,13 @@ double rotd[3]; // [phid, thetad, psid] desired
 
 void printMesument() {
   Serial.print("Roll:");
-  Serial.print(rot[0]);
-  Serial.print(" ");
-  Serial.print("Pitch:");
   Serial.print(rot[1]);
+  Serial.print(" ");
+//  Serial.print("Original2:");
+//  Serial.print(original2);
+//  Serial.print(" ");
+  Serial.print("Pitch:");
+  Serial.print(rot[0]);
   Serial.print(" ");
   Serial.print("Yaw:");
   Serial.print(rot[2]);
@@ -96,9 +133,9 @@ void printReference() {
   Serial.print("ref_theta:");
   Serial.print(rotd[1]);
   Serial.print(" ");
-  Serial.print("ref_psi:");
-  Serial.print(rotd[2]);
-  Serial.print(" ");
+//  Serial.print("ref_psi:");
+//  Serial.print(rotd[2]);
+//  Serial.print(" ");
 }
 
 void print_PID_out() {
@@ -144,12 +181,12 @@ void setup()
 {
 
   imu.begin(9600, true);
-
+  imu.calibrate_initial(false,-2.32,-3.49);
   Serial.println("*************");
-  Serial.print("Valor kp: ");
+  Serial.print("Valor kp pitch e roll: ");
   Serial.print(EEPROM_readDouble(0));
   Serial.print(" ");
-  Serial.print("Valor kd: ");
+  Serial.print("Valor ki pitch e roll: ");
   Serial.println(EEPROM_readDouble(50));
   Serial.println("*************");
 
@@ -168,9 +205,9 @@ void setup()
   /*in order to make sure that the ESCs won't enter into config mode
    *I send a 1000us pulse to each ESC.*/
   for(int i =0; i<4 ; i++){
-    motors[i].writeMicroseconds(1400);
+    motors[i].writeMicroseconds(1000);
   }
-  delay(2000);
+  delay(5000);
 //  for(int i =0; i<4 ; i++){
 //    motors[i].writeMicroseconds(1000);
 //  }
@@ -179,13 +216,13 @@ void setup()
 
 void loop()
 {
-    static int current_tuning_controller = 2;
+//    static int current_tuning_controller = 2;
     static int desarming_counter = 0;
-    if(inputs[THROTTLE] < 1100){ desarming_counter++; }
+    if(inputs[THROTTLE] < 1000){ desarming_counter++; }
     if(desarming_counter == 50) {
       mot_activated = 0;
-      EEPROM_writeDouble(0, controllers[current_tuning_controller].Kp);
-      EEPROM_writeDouble(50, controllers[current_tuning_controller].Kd);
+      EEPROM_writeDouble(0, controllers[0].Kp);
+      EEPROM_writeDouble(50, controllers[0].Ki);
     }
 
   // Time reading for PID calculations
@@ -193,27 +230,34 @@ void loop()
   time = millis(); // actual time read
   elapsedTime = (time - timePrev) / 1000;
 
-  //imu.BMI_160_update_RPY(roll, pitch, yaw);
-  long accx, accy, accz;
-  imu.getRaw_acc(accx, accy, accz);
-  roll = mapfloat((float)accx, -20000, 20000, -90, 90);
-  pitch = mapfloat((float)accy, -20000, 20000, -90, 90);
-  yaw = mapfloat((float)accz, -20000, 20000, -90, 90);
-
-  controllers[0].Kp = mapfloat((float)inputs[FLY_MODE], 1000, 2000, 0, 15);
-  controllers[1].Kp = mapfloat((float)inputs[ARM], 1000, 2000, 0, 10);
+  imu.BMI_160_update_RPY(pitch, roll, yaw);
+  // long accx, accy, accz;
+  // imu.getRaw_acc(accx, accy, accz);
+  // roll = mapfloat((float)accx, -20000, 20000, -90, 90);
+  // pitch = mapfloat((float)accy, -20000, 20000, -90, 90);
+  // yaw = mapfloat((float)accz, -20000, 20000, -90, 90);
+  float kp = mapfloat((float)inputs[ARM], 900, 2000, 0, 20);
+  float ki = mapfloat((float)inputs[FLY_MODE], 900, 2000, 0, 10);
+  
+  controllers[0].Kp = kp;
+  controllers[0].Ki = ki;
+  controllers[1].Kp = kp;
+  controllers[1].Ki = ki;
 
   //////////////////////////////////////Total angle/////////////////////////////////////
+
   /*---X axis angle(Pitch)---*/
-  rot[0] = pitch;
+//  rot[0] = pitch;
+  rot[0] = moving_average1(pitch);
   /*---Y axis angle(Roll)---*/
-  rot[1] = roll;
+  rot[1] = moving_average2(roll);
+//  rot[1] = roll;
   /*---Z axis angle(Yaw)---*/
   rot[2] = yaw;
 
   // Begining of the PID calculations
-  rotd[0] = 0 - mapfloat((float)inputs[PITCH], 1000, 2000, -10, 10);
-  rotd[1] = 0 - mapfloat((float)inputs[ROLL], 1000, 2000, -10, 10);
+  rotd[0] = 0 - mapfloat((float)inputs[PITCH], 1000, 2000, -45, 45);
+  rotd[1] = 0 - mapfloat((float)inputs[ROLL], 1000, 2000, -45, 45);
   rotd[2] = 0 - mapfloat((float)inputs[YAW], 1000, 2000, -45, 45);
 
   // First calculate the error between the desired angle and the real measured angle
@@ -223,10 +267,10 @@ void loop()
   }
 
   /*Finnaly we calculate the PWM width. We sum the desired throttle and the PID value*/
-  pwm[0] = 115 + inputs[THROTTLE] - U[U_THETA] + U[U_PHI] + U[U_PSI];
-  pwm[1] = 115 + inputs[THROTTLE] - U[U_THETA] - U[U_PHI] - U[U_PSI];
-  pwm[2] = 115 + inputs[THROTTLE] + U[U_THETA] + U[U_PHI] - U[U_PSI];
-  pwm[3] = 115 + inputs[THROTTLE] + U[U_THETA] - U[U_PHI] + U[U_PSI];
+  pwm[0] = 115 + inputs[THROTTLE] + U[U_PSI] + U[U_THETA] - U[U_PHI];//L_F
+  pwm[1] = 115 + inputs[THROTTLE] - U[U_PSI] - U[U_THETA] - U[U_PHI];//R_F
+  pwm[2] = 115 + inputs[THROTTLE] - U[U_PSI] + U[U_THETA] + U[U_PHI];//L_B
+  pwm[3] = 115 + inputs[THROTTLE] + U[U_PSI] - U[U_THETA] + U[U_PHI];//R_B
 //  pwm[1] = 115 + inputs[THROTTLE]  - U[U_PSI];
 //  pwm[0] = 115 + inputs[THROTTLE]  + U[U_PSI];
 //  pwm[2] = 115 + inputs[THROTTLE]  - U[U_PSI];
@@ -243,6 +287,7 @@ void loop()
 
   if (mot_activated==1)
   {
+//    Serial.print(" *Estou aqui* ");
     for (int i = 0; i < 4; i++) {
       motors[i].writeMicroseconds(pwm[i]);
     }
@@ -259,10 +304,13 @@ void loop()
   //else if (inputs[ARM] < 1400 && inputs[THROTTLE] < 1100) mot_activated = 0;
 
   printMesument();
-  //printReference();
-  //print_PID_out();
-  //print_PWM();
-  //print_RadioValues();
+//  printReference();
+//  print_PID_out();
+//  print_PWM();
+//  Serial.print("kp:");
+//  Serial.print(kp);
+//  Serial.print(" ");
+//  print_RadioValues();
 //  Serial.print("Motor_activate:");
 //  Serial.print(mot_activated);
   Serial.println();
