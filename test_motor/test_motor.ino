@@ -1,39 +1,9 @@
 #include <Servo.h>
 #include <BMI160Gen.h>
-#include <BMI160_60S3.h>
 #include <EEPROM.h>
 #define BitTst
 
-//average media_roll(50);
-//average media_pitch(50);
 
-// ===============================================================================
-// --- Média móvel ---
-#define      n     10        //número de pontos da média móvel 
-// ===============================================================================
-// --- Protótipo da Função ---
-float moving_average1();       //Função para filtro de média móvel
-float moving_average2();       //Função para filtro de média móvel
-// ===============================================================================
-// --- Variáveis Globais ---
-float mesurement_average1, mesurement_average2;          //recebe o valor original filtrado
-float numbers1[n], numbers2[n];        //vetor com os valores para média móvel
-float moving_average1(float mesurement){
-   //desloca os elementos do vetor de média móvel
-   for(int i= n-1; i>0; i--) numbers1[i] = numbers1[i-1];
-   numbers1[0] = mesurement; //posição inicial do vetor recebe a leitura original
-   float acc = 0;          //acumulador para somar os pontos da média móvel
-   for(int i=0; i<n; i++) acc += numbers1[i]; //faz a somatória do número de pontos
-   return acc/n;  //retorna a média móvel 
-} //end moving_average
-float moving_average2(float mesurement){
-   //desloca os elementos do vetor de média móvel
-   for(int i= n-1; i>0; i--) numbers2[i] = numbers2[i-1];
-   numbers2[0] = mesurement; //posição inicial do vetor recebe a leitura original
-   float acc = 0;          //acumulador para somar os pontos da média móvel
-   for(int i=0; i<n; i++) acc += numbers2[i]; //faz a somatória do número de pontos
-   return acc/n;  //retorna a média móvel 
-} //end moving_average
 
 double rotd[3]; // [phid, thetad, psid] desired
 
@@ -110,8 +80,6 @@ void printMesument() {
   Serial.print(" ");
 }
 
-
-
 void printReference() {
   Serial.print("ref_phi:");
   Serial.print(rotd[0]);
@@ -123,7 +91,6 @@ void printReference() {
 //  Serial.print(rotd[2]);
 //  Serial.print(" ");
 }
-
 
 void print_PWM() {
   Serial.print("pwm_L_F:");
