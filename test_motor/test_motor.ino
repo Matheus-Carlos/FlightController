@@ -1,28 +1,9 @@
 #include <Servo.h>
 #include <BMI160Gen.h>
-#include <EEPROM.h>
 #define BitTst
-
-
+#include <imuFilter.h>
 
 double rotd[3]; // [phid, thetad, psid] desired
-
-void EEPROM_writeDouble(int ee, float value)
-{
-    byte* p = (byte*)(void*)&value;
-    for (int i = 0; i < sizeof(value); i++)
-        EEPROM.write(ee++, *p++);
-}
-
-
-float EEPROM_readDouble(int ee)
-{
-    float value = 0.0;
-    byte* p = (byte*)(void*)&value;
-    for (int i = 0; i < sizeof(value); i++)
-        *p++ = EEPROM.read(ee++);
-    return value;
-}
 
 enum Input
 {
@@ -41,10 +22,11 @@ float pwm[4];
 int motor_pins[4] = {36, 34, 35, 37};
 
 // sensor
-
-BMI160_60S3 imu;
+constexpr float GAIN = 0.1;     // Fusion gain, value between 0 and 1 - Determines heading correction with respect to gravity vector. 
+imuFilter <&GAIN> fusion;
+float acc[3];
+float gyro[3];
 float roll, pitch, yaw;
-float Total_angle_x, Total_angle_y, Total_angle_z;
 
 // More variables for the code
 int i;
@@ -124,8 +106,14 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
 
 void setup(){
 
-  imu.begin(9600, true);
-  imu.calibrate_initial(false,0,-2.85);
+  Serial.begin(38400); // initialize Serial communication
+  while (!Serial);    // wait for the serial port to open
+  Serial.println("Initializing IMU device...done.");
+  BMI160.begin(BMI160GenClass::I2C_MODE);
+  BMI160.setGyroRange(250);
+  BMI160.autoCalibrateGyroOffset(); 
+  readAccelerometer(acc);
+  fusion.setup(acc[0], acc[1], acc[2]);
 
   PCICR |= (1 << PCIE0);   // enable PCMSK0 scan - PORT B OF THE ARDUINO MEGA
   PCMSK0 |= (1 << PCINT0); // Set pin D53 trigger an interrupt on state change - CHANNEL 1.
@@ -145,25 +133,17 @@ void setup(){
     motors[i].writeMicroseconds(1000);
   }
   delay(5000);
-//  for(int i =0; i<4 ; i++){
-//    motors[i].writeMicroseconds(1000);
-//  }
-//  delay(5000);
 }
 
-void loop()
-{
-//    static int current_tuning_controller = 2;
-//    static int desarming_counter = 0;
-//    if(inputs[THROTTLE] < 1000){ desarming_counter++; }
-//    if(desarming_counter == 50) {
-//      mot_activated = 0;
-//    }
+void loop(){
 
-  imu.BMI_160_update_RPY(pitch, roll, yaw);
+  readAccelerometer(acc);
+  readGyro(gyro);
+  fusion.update(gyro[0], gyro[1], gyro[2], acc[0], acc[1], acc[2] );
 
-//  pitch = moving_average1(pitch);
-//  roll = moving_average2(roll);
+ pitch = fusion.pitch();
+ roll = fusion.roll();
+ yaw = fusion.yaw();
 
   pwm[0] = 115 + inputs[THROTTLE];//L_F
   pwm[1] = 115 + inputs[THROTTLE];//R_F
@@ -232,4 +212,20 @@ ISR(PCINT0_vect)
 
 double sat(double val, double min, double max){
   return val < min ? min : (val > max ? max : val);
+}
+
+void readAccelerometer(float acc[]) {
+    long acc_raw[3];
+    BMI160.readAccelerometer(acc_raw[0], acc_raw[1], acc_raw[2]);
+    for (int i = 0; i < 3; i++){
+        acc[i] = (float)acc_raw[i]/16384.0;
+    }
+}
+
+void readGyro(float gyro[]) {
+    int gyro_raw[3];
+    BMI160.readGyro(gyro_raw[0], gyro_raw[1], gyro_raw[2]);
+    for (int i = 0; i < 3; i++){
+        gyro[i] = (float)gyro_raw[i]*(PI/180.0)/131.2;
+    }
 }

@@ -5,8 +5,8 @@ constexpr float GAIN = 0.1;     // Fusion gain, value between 0 and 1 - Determin
 imuFilter <&GAIN> fusion;
 float acc[3];
 float gyro[3];
-
-void setup() {
+long tempo=0;
+void setup(){
   Serial.begin(38400); // initialize Serial communication
   while (!Serial);    // wait for the serial port to open
   Serial.println("Initializing IMU device...done.");
@@ -35,6 +35,7 @@ void setup() {
 }
 
 void loop() {
+  tempo = millis();
   // read raw gyro measurements from device
   readAccelerometer(acc);
   readGyro(gyro);
